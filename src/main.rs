@@ -39,7 +39,7 @@ enum PossibleToken {
 
 fn find_token(chunk: &str) -> Token {
     let ret = match chunk {
-        "\n" => Token::Newline("linefeed".to_string()),
+        "\n" => Token::Newline("newline".to_string()),
         " " |
         "  " |
         "   " => Token::Whitespace("whitespace".to_string()),
@@ -48,6 +48,12 @@ fn find_token(chunk: &str) -> Token {
         "            " => Token::Indent(chunk.to_string()), 
         "\t" => Token::Indent("tab_indent".to_string()),
         "contract" |
+        "event" |
+        "function" |
+        "Print" |
+        "var" |
+        "int" |
+        "real" |
         "struct" |
         "bytes32" |
         "uint" | 
@@ -66,6 +72,8 @@ fn find_token(chunk: &str) -> Token {
         "^" |
         "~" |
         "+" |
+        "=" |
+        ";" |
         "-" |
         "*" |
         "%" |
@@ -85,14 +93,23 @@ fn parse_tokens(file_text: &str) -> Vec<Token> {
         let token = find_token(&prev_chunk);
         match token {
             Token::Unknown(ref s) => {
-                let re = Regex::new(" .*\\w+").unwrap();
-                if re.is_match(&prev_chunk) {
+                let re_spaces = Regex::new("^\\s{1,3}\\S+").unwrap();
+                let re_newline = Regex::new("\\n").unwrap();
+                let re_sc = Regex::new(";").unwrap();
+                if re_spaces.is_match(&prev_chunk) {
                     prev_chunk = prev_chunk.replace(" ", "");
+                }
+                if re_newline.is_match(&prev_chunk) {
+                    prev_chunk = String::new();
+                    tokens.push(Token::Newline("newline".to_string()));
+                }
+                if re_sc.is_match(&prev_chunk) {
+                    prev_chunk = String::new();
+                    tokens.push(Token::Operator(";".to_string()));
                 }
                 if prev_chunk.len() >= 8 {
                     prev_chunk = String::new();
                 }
-                
             }
             Token::Whitespace(ref s) => { 
                 prev_chunk = prev_chunk;
