@@ -16,12 +16,14 @@ enum Token {
     Operator(String),
     Whitespace(String),
     Unknown(String),
+    Partial(String),
 }
 
 impl Token {
     fn get_string(&self) -> String {
         match self {
             &Token::Unknown(ref s) |
+            &Token::Partial(ref s) |
             &Token::Newline(ref s) |
             &Token::Indent(ref s) |
             &Token::Keyword(ref s) |
@@ -37,67 +39,12 @@ enum PossibleToken {
     NoToken,
 }
 
-
-// what we need to do
-// pass all the chars to find a token one after another
-//  on each char --
-//      check if the PossibleToken value is NoToken or a GoodToken
-//      if it's a good token, we need a new char list without the previous chars
-//      problem: whitespace!
-
-fn get_tokens(fp_s: &str) -> (PossibleToken, &str) {
-    let token = match fp_s {
-        "\n" => Token::Newline("linefeed".to_string()),
-        " " => {
-                let re = Regex::new("[a-zA-Z0-9] [a-zA-Z0-9]");
-                if re.is_match(fp_s) {
-                    Token::Whitespace("single_whitespace".to_string())
-                } else {
-                    Token::Whitespace("multi_whitespace".to_string())
-                }
-        }
-        "    " | 
-        "        " |
-        "            " => Token::Indent(fp_s.to_string()), 
-        "\t" => Token::Indent("tab_indent".to_string()),
-        "contract" |
-        "struct" |
-        "bytes32" |
-        "uint" | 
-        "address" |
-        "bool" => Token::Keyword(fp_s.to_string()),
-        "!" | 
-        " && " |
-        "//" |
-        "==" |
-        "<=" | 
-        "<" |
-        ">" | 
-        ">=" |
-        "&" |
-        "/" |
-        "^" |
-        "~" |
-        "+" |
-        "-" |
-        "*" |
-        "%" |
-        "**" |
-        "!=" => Token::Operator(fp_s.to_string()),
-        _ => Token::Unknown(fp_s.to_string()),
-    };
-    let possible_token = match token {
-        Token::Unknown(ref s) => PossibleToken::NoToken,
-        _ => PossibleToken::GoodToken(token),
-    };
-    (possible_token, fp_s)
-}
-
-
 fn find_token(chunk: &str) -> Token {
     let ret = match chunk {
         "\n" => Token::Newline("linefeed".to_string()),
-        " " => Token::Whitespace("whitespace".to_string()),
+        " " |
+        "  " |
+        "   " => Token::Whitespace("whitespace".to_string()),
         "    " | 
         "        " |
         "            " => Token::Indent(chunk.to_string()), 
@@ -127,7 +74,6 @@ fn find_token(chunk: &str) -> Token {
         "**" |
         "!=" => Token::Operator(chunk.to_string()),
         _ => Token::Unknown(chunk.to_string()),
-        //_ => Token::Unknown("**unknown**".to_string()),
     };
     ret
 }
@@ -140,16 +86,26 @@ fn parse_tokens(file_text: &str) -> Vec<Token> {
         prev_chunk.push(c);
         let token = find_token(&prev_chunk);
         match token {
-            Token::Unknown(ref s) => { 
-                if prev_chunk.len() >= 10 {
-                    prev_chunk = String::new()
+            Token::Unknown(ref s) => {
+                let re = Regex::new(" .*\\w+").unwrap();
+                if re.is_match(&prev_chunk) {
+                    prev_chunk = prev_chunk.replace(" ", "");
                 }
-            },
-            _ => {
+                if prev_chunk.len() >= 8 {
+                    prev_chunk = String::new();
+                }
+                
+            }
+            Token::Partial(ref s) => prev_chunk = prev_chunk,
+            Token::Whitespace(ref s) => { 
                 prev_chunk = prev_chunk;
-            },
+                tokens.push(Token::Whitespace(prev_chunk.to_string()));
+            }
+            _ => {
+                prev_chunk = String::new(); 
+                tokens.push(token);
+            }
         }
-        tokens.push(token); 
     }
     for token in &tokens {
         println!("{}", token.get_string());
