@@ -16,14 +16,12 @@ enum Token {
     Operator(String),
     Whitespace(String),
     Unknown(String),
-    Partial(String),
 }
 
 impl Token {
     fn get_string(&self) -> String {
         match self {
             &Token::Unknown(ref s) |
-            &Token::Partial(ref s) |
             &Token::Newline(ref s) |
             &Token::Indent(ref s) |
             &Token::Keyword(ref s) |
@@ -96,7 +94,6 @@ fn parse_tokens(file_text: &str) -> Vec<Token> {
                 }
                 
             }
-            Token::Partial(ref s) => prev_chunk = prev_chunk,
             Token::Whitespace(ref s) => { 
                 prev_chunk = prev_chunk;
                 tokens.push(Token::Whitespace(prev_chunk.to_string()));
