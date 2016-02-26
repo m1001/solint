@@ -32,12 +32,8 @@ impl Token {
     }
 }
 
-enum PossibleToken {
-    GoodToken(Token),
-    NoToken,
-}
-
 fn find_token(chunk: &str) -> Token {
+    println!("{}", chunk);
     let ret = match chunk {
         "\n" => Token::Newline("newline".to_string()),
         " " |
@@ -58,9 +54,20 @@ fn find_token(chunk: &str) -> Token {
         "bytes32" |
         "uint" | 
         "address" |
+        "mapping" |
+        "public" |
+        "for" |
+        "if" |
+        "while" |
+        "else" |
+        "modifier" |
+        "throw" |
+        "this" |
         "bool" => Token::Keyword(chunk.to_string()),
         "!" | 
         " && " |
+        "(" |
+        ")" |
         "//" |
         "==" |
         "<=" | 
@@ -72,8 +79,11 @@ fn find_token(chunk: &str) -> Token {
         "^" |
         "~" |
         "+" |
+        "{" |
+        "}" |
         "=" |
         ";" |
+        ":" |
         "-" |
         "*" |
         "%" |
@@ -95,24 +105,30 @@ fn parse_tokens(file_text: &str) -> Vec<Token> {
             Token::Unknown(ref s) => {
                 let re_spaces = Regex::new("^\\s{1,3}\\S+").unwrap();
                 let re_newline = Regex::new("\\n").unwrap();
-                let re_sc = Regex::new(";").unwrap();
+                let re_lookahead = Regex::new("\\s+\\S{1}").unwrap();
+                let re_fc = Regex::new("\\s+\\(.*\\)").unwrap();
                 if re_spaces.is_match(&prev_chunk) {
                     prev_chunk = prev_chunk.replace(" ", "");
+                    let space_token = find_token(&prev_chunk);
+                    match space_token {
+                        Token::Unknown(ref s) => prev_chunk = prev_chunk,
+                        _ => tokens.push(space_token),
+                    };
                 }
                 if re_newline.is_match(&prev_chunk) {
                     prev_chunk = String::new();
                     tokens.push(Token::Newline("newline".to_string()));
                 }
-                if re_sc.is_match(&prev_chunk) {
-                    prev_chunk = String::new();
-                    tokens.push(Token::Operator(";".to_string()));
+                if re_lookahead.is_match(&prev_chunk) {
+                    prev_chunk = " ".to_string();
                 }
-                if prev_chunk.len() >= 8 {
-                    prev_chunk = String::new();
+                if re_fc.is_match(&prev_chunk) {
+                    tokens.push(Token::Operator("op".to_string()));
+                    tokens.push(Token::Operator("cp".to_string()));
+                    prev_chunk = String::new(); 
                 }
             }
             Token::Whitespace(ref s) => { 
-                prev_chunk = prev_chunk;
                 tokens.push(Token::Whitespace(prev_chunk.to_string()));
             }
             _ => {
@@ -121,9 +137,9 @@ fn parse_tokens(file_text: &str) -> Vec<Token> {
             }
         }
     }
-    for token in &tokens {
-        println!("{}", token.get_string());
-    }
+    //for token in &tokens {
+    //    println!("{}", token.get_string());
+   // }
     tokens
 } 
 
