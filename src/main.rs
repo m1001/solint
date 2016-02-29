@@ -33,6 +33,8 @@ impl Token {
 }
 
 fn find_token(chunk: &str) -> Token {
+    // we need to keep state of being inside and ending a comment, 
+    // this might be done post tokenizer
     println!("{}", chunk);
     let ret = match chunk {
         "\n" => Token::Newline("newline".to_string()),
@@ -106,7 +108,8 @@ fn parse_tokens(file_text: &str) -> Vec<Token> {
                 let re_spaces = Regex::new("^\\s{1,3}\\S+").unwrap();
                 let re_newline = Regex::new("\\n").unwrap();
                 let re_lookahead = Regex::new("\\s+\\S{1}").unwrap();
-                let re_fc = Regex::new("\\s+\\(.*\\)").unwrap();
+                //let re_fc = Regex::new("\\s+\\(.*\\)").unwrap();
+                let re_fc = Regex::new("[a-zA-Z]+\\([^\\)]*\\)(\\.[^\\)]*\\))?").unwrap();
                 if re_spaces.is_match(&prev_chunk) {
                     prev_chunk = prev_chunk.replace(" ", "");
                     let space_token = find_token(&prev_chunk);
