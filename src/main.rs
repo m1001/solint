@@ -32,138 +32,82 @@ impl Token {
     }
 }
 
-fn scan_char(c: char) -> bool {
-    match c {
-        '\n'|
-        '\t'|
-        ' ' |
-        'a' |
-        'b' |
-        'c' |
-        'e' |
-        'f' |
-        'i' |
-        'm' |
-        'p' |
-        'r' |
-        's' |
-        't' |
-        'u' |
-        '!' | 
-        'v' |
-        '(' |
-        ')' |
-        '=' |
-        '<' | 
-        '>' | 
-        '&' |
-        '/' |
-        '^' |
-        '~' |
-        '+' |
-        '{' |
-        '}' |
-        ';' |
-        ':' |
-        '-' |
-        '%' |
-        '*' => true,
-        _  => false
+fn match_token(ts: &str) -> Token {
+    match ts {
+        "\n" => Token::Newline(ts.to_string()),
+        " " => Token::Whitespace(ts.to_string()),
+        "address" |
+        "bool" |
+        "bytes32" |
+        "contract" |
+        "else" |
+        "event" |
+        "for" |
+        "function" |
+        "if" |
+        "int" |
+        "mapping" |
+        "modifier" |
+        "public" |
+        "real" |
+        "struct" |
+        "this" |
+        "throw" |
+        "uint" |
+        "var" |
+        "while" => Token::Keyword(ts.to_string()),
+        "!" |
+        "(" |
+        "" |
+        "//" |
+        "=" |
+        ">=" |
+        "<" |
+        ">" |
+        "&" |
+        "/" |
+        "^" |
+        "~" |
+        "+" |
+        "{" |
+        "}" |
+        ";" |
+        ":" |
+        "-" |
+        "*" |
+        "%" => Token::Identifier(ts.to_string()),
+        _ => Token::Unknown(ts.to_string()),
     }
-}
-
-fn get_valid_keywords() -> Vec<String> {
-    vec!(
-        "\n".to_string(),
-        " ".to_string(),
-        "    ".to_string(),
-        "\t".to_string(),
-        "address".to_string(),
-        "bool".to_string(),
-        "bytes32".to_string(),
-        "contract".to_string(),
-        "else".to_string(),
-        "event".to_string(),
-        "for".to_string(),
-        "function".to_string(),
-        "if".to_string(),
-        "int".to_string(),
-        "mapping".to_string(),
-        "modifier".to_string(),
-        "public".to_string(),
-        "real".to_string(),
-        "struct".to_string(),
-        "this".to_string(),
-        "throw".to_string(),
-        "uint".to_string(),
-        "var".to_string(),
-        "while".to_string(),
-        "!".to_string(),
-        "(".to_string(),
-        ")".to_string(),
-        "//".to_string(),
-        "=".to_string(),
-        "!=".to_string(),
-        "==".to_string(),
-        "<=".to_string(),
-        ">=".to_string(),
-        "<".to_string(),
-        ">".to_string(),
-        "&".to_string(),
-        "/".to_string(),
-        "^".to_string(),
-        "~".to_string(),
-        "+".to_string(),
-        "{".to_string(),
-        "}".to_string(),
-        ";".to_string(),
-        ":".to_string(),
-        "-".to_string(),
-        "*".to_string(),
-        "**".to_string(),
-        "%".to_string(),
-    )
 
 }
 
-fn fetch_tokens(fp: &str) -> Vec<Token> {
-    let chars: Vec<char> = fp.chars().collect();
+
+fn ninja_tokens(fp: &str) -> Vec<Token> {
     let mut prev_chunk = String::new();
     let mut tokens: Vec<Token> = Vec::new();
-    let mut scanning = false;
-    let mut was_scanning = false;
-    let keywords = get_valid_keywords();
-    for c in chars {
+    for c in fp.chars() {
         prev_chunk.push(c);
-        scanning = scan_char(c);
-        if scanning == true {
-            if was_scanning == true {
-                if keywords.contains(&prev_chunk) {
-                    println!("tokenzz: -{}-",prev_chunk);
-                    was_scanning = false;
-                    prev_chunk = String::new();
-                } else if keywords.contains(&c.to_string()) {
-                    println!("tokenccc: -{}-", c);
-                    prev_chunk = String::new();
-                }
-            } else {
-                if keywords.contains(&c.to_string()) {
-                    println!("tokencc: -{}-", c);
-                    prev_chunk = String::new();
-                }
-            }
-            if keywords.contains(&prev_chunk) {
-                println!("token: -{}-",&prev_chunk);
+        let s_token = match_token(&prev_chunk);
+        let c_token = match_token(&c.to_string());
+        let s_match = &prev_chunk == &c.to_string();
+        match s_token {
+            Token::Unknown(ref s) => prev_chunk = prev_chunk,
+            _ => {
+                tokens.push(s_token);
                 prev_chunk = String::new();
             }
-            was_scanning = true;
-        } else { 
-            if keywords.contains(&prev_chunk) {
-                println!("tokenxx: {}", prev_chunk);
+        }
+        match c_token {
+            Token::Unknown(ref s) => prev_chunk = prev_chunk,
+            _ => {
+                if !s_match {
+                    tokens.push(c_token);
+                    prev_chunk = String::new();
+                }
             }
         }
    }
-   tokens 
+    tokens
 }
 
 fn main() {
@@ -204,7 +148,7 @@ fn parse_args(matches: getopts::Matches) {
         let mut fp = File::open(&input_file).unwrap();
         let mut fp_s = String::new();
         fp.read_to_string(&mut fp_s).unwrap();
-        tokens = fetch_tokens(&fp_s);
+        tokens = ninja_tokens(&fp_s);
 
     } else {
         println!("{}:  file not found", &input_file);
@@ -212,4 +156,5 @@ fn parse_args(matches: getopts::Matches) {
         return;
     }
     println!("got {} tokens from input file", tokens.len());
+    for t in tokens { println!("{:?}", t); }
 }   
