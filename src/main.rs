@@ -32,123 +32,142 @@ impl Token {
     }
 }
 
-fn find_token(chunk: &str) -> Token {
-    // we need to keep state of being inside and ending a comment, 
-    // this might be done post tokenizer
-    println!("{}", chunk);
-    let ret = match chunk {
-        "\n" => Token::Newline("newline".to_string()),
-        " " |
-        "  " |
-        "   " => Token::Whitespace("whitespace".to_string()),
-        "    " | 
-        "        " |
-        "            " => Token::Indent(chunk.to_string()), 
-        "\t" => Token::Indent("tab_indent".to_string()),
-        "contract" |
-        "event" |
-        "function" |
-        "Print" |
-        "var" |
-        "int" |
-        "real" |
-        "struct" |
-        "bytes32" |
-        "uint" | 
-        "address" |
-        "mapping" |
-        "public" |
-        "for" |
-        "if" |
-        "while" |
-        "else" |
-        "modifier" |
-        "throw" |
-        "this" |
-        "bool" => Token::Keyword(chunk.to_string()),
-        "!" | 
-        " && " |
-        "(" |
-        ")" |
-        "//" |
-        "==" |
-        "<=" | 
-        "<" |
-        ">" | 
-        ">=" |
-        "&" |
-        "/" |
-        "^" |
-        "~" |
-        "+" |
-        "{" |
-        "}" |
-        "=" |
-        ";" |
-        ":" |
-        "-" |
-        "*" |
-        "%" |
-        "**" |
-        "!=" => Token::Operator(chunk.to_string()),
-        _ => Token::Unknown(chunk.to_string()),
-    };
-    ret
+fn scan_char(c: char) -> bool {
+    match c {
+        '\n'|
+        '\t'|
+        ' ' |
+        'a' |
+        'b' |
+        'c' |
+        'e' |
+        'f' |
+        'i' |
+        'm' |
+        'p' |
+        'r' |
+        's' |
+        't' |
+        'u' |
+        '!' | 
+        'v' |
+        '(' |
+        ')' |
+        '=' |
+        '<' | 
+        '>' | 
+        '&' |
+        '/' |
+        '^' |
+        '~' |
+        '+' |
+        '{' |
+        '}' |
+        ';' |
+        ':' |
+        '-' |
+        '%' |
+        '*' => true,
+        _  => false
+    }
 }
 
-fn parse_tokens(file_text: &str) -> Vec<Token> {
-    let chars: Vec<char> = file_text.chars().collect();
+fn get_valid_keywords() -> Vec<String> {
+    vec!(
+        "\n".to_string(),
+        " ".to_string(),
+        "    ".to_string(),
+        "\t".to_string(),
+        "address".to_string(),
+        "bool".to_string(),
+        "bytes32".to_string(),
+        "contract".to_string(),
+        "else".to_string(),
+        "event".to_string(),
+        "for".to_string(),
+        "function".to_string(),
+        "if".to_string(),
+        "int".to_string(),
+        "mapping".to_string(),
+        "modifier".to_string(),
+        "public".to_string(),
+        "real".to_string(),
+        "struct".to_string(),
+        "this".to_string(),
+        "throw".to_string(),
+        "uint".to_string(),
+        "var".to_string(),
+        "while".to_string(),
+        "!".to_string(),
+        "(".to_string(),
+        ")".to_string(),
+        "//".to_string(),
+        "=".to_string(),
+        "!=".to_string(),
+        "==".to_string(),
+        "<=".to_string(),
+        ">=".to_string(),
+        "<".to_string(),
+        ">".to_string(),
+        "&".to_string(),
+        "/".to_string(),
+        "^".to_string(),
+        "~".to_string(),
+        "+".to_string(),
+        "{".to_string(),
+        "}".to_string(),
+        ";".to_string(),
+        ":".to_string(),
+        "-".to_string(),
+        "*".to_string(),
+        "**".to_string(),
+        "%".to_string(),
+    )
+
+}
+
+fn fetch_tokens(fp: &str) -> Vec<Token> {
+    let chars: Vec<char> = fp.chars().collect();
     let mut prev_chunk = String::new();
     let mut tokens: Vec<Token> = Vec::new();
+    let mut scanning = false;
+    let mut was_scanning = false;
+    let keywords = get_valid_keywords();
     for c in chars {
         prev_chunk.push(c);
-        let token = find_token(&prev_chunk);
-        match token {
-            Token::Unknown(ref s) => {
-                let re_spaces = Regex::new("^\\s{1,3}\\S+").unwrap();
-                let re_newline = Regex::new("\\n").unwrap();
-                let re_lookahead = Regex::new("\\s+\\S{1}").unwrap();
-                //let re_fc = Regex::new("\\s+\\(.*\\)").unwrap();
-                let re_fc = Regex::new("[a-zA-Z]+\\([^\\)]*\\)(\\.[^\\)]*\\))?").unwrap();
-                if re_spaces.is_match(&prev_chunk) {
-                    prev_chunk = prev_chunk.replace(" ", "");
-                    let space_token = find_token(&prev_chunk);
-                    match space_token {
-                        Token::Unknown(ref s) => prev_chunk = prev_chunk,
-                        _ => tokens.push(space_token),
-                    };
-                }
-                if re_newline.is_match(&prev_chunk) {
+        scanning = scan_char(c);
+        if scanning == true {
+            if was_scanning == true {
+                if keywords.contains(&prev_chunk) {
+                    println!("tokenzz: -{}-",prev_chunk);
+                    was_scanning = false;
                     prev_chunk = String::new();
-                    tokens.push(Token::Newline("newline".to_string()));
+                } else if keywords.contains(&c.to_string()) {
+                    println!("tokenccc: -{}-", c);
+                    prev_chunk = String::new();
                 }
-                if re_lookahead.is_match(&prev_chunk) {
-                    prev_chunk = " ".to_string();
-                }
-                if re_fc.is_match(&prev_chunk) {
-                    tokens.push(Token::Operator("op".to_string()));
-                    tokens.push(Token::Operator("cp".to_string()));
-                    prev_chunk = String::new(); 
+            } else {
+                if keywords.contains(&c.to_string()) {
+                    println!("tokencc: -{}-", c);
+                    prev_chunk = String::new();
                 }
             }
-            Token::Whitespace(ref s) => { 
-                tokens.push(Token::Whitespace(prev_chunk.to_string()));
+            if keywords.contains(&prev_chunk) {
+                println!("token: -{}-",&prev_chunk);
+                prev_chunk = String::new();
             }
-            _ => {
-                prev_chunk = String::new(); 
-                tokens.push(token);
+            was_scanning = true;
+        } else { 
+            if keywords.contains(&prev_chunk) {
+                println!("tokenxx: {}", prev_chunk);
             }
         }
-    }
-    //for token in &tokens {
-    //    println!("{}", token.get_string());
-   // }
-    tokens
-} 
+   }
+   tokens 
+}
 
 fn main() {
     get_args();
-    let token = Token::Newline("\n".to_string());
 }
 
 fn help_menu() {
@@ -185,7 +204,7 @@ fn parse_args(matches: getopts::Matches) {
         let mut fp = File::open(&input_file).unwrap();
         let mut fp_s = String::new();
         fp.read_to_string(&mut fp_s).unwrap();
-        tokens = parse_tokens(&fp_s);
+        tokens = fetch_tokens(&fp_s);
 
     } else {
         println!("{}:  file not found", &input_file);
