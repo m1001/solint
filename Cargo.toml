@@ -1,0 +1,7 @@
+[package]
+name = "solint"
+version = "0.0.2"
+authors = ["matthew.lindsey <matthew.lindsey@logrhythm.com>"]
+
+[dependencies]
+getopts = "0.2"
